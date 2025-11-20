@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: royal-grace-backend:prod
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:h2:file:/data/royalgrace}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-sa}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-}
+      LOGGING_LEVEL_ORG_HIBERNATE_SQL: ${LOGGING_LEVEL_ORG_HIBERNATE_SQL:-warn}
+      ADMIN_DEFAULT_USERNAME: ${ADMIN_DEFAULT_USERNAME:-admin}
+      ADMIN_DEFAULT_PASSWORD: ${ADMIN_DEFAULT_PASSWORD:-change-me}
+      ADMIN_DEFAULT_EMAIL: ${ADMIN_DEFAULT_EMAIL:-}
+    volumes:
+      - h2data:/data
+    # optional healthcheck could be added if actuator is enabled
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: royal-grace-frontend:prod
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://backend:8080}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-super-secret-change-me}
+    expose:
+      - "3000"
+    ports:
+      # Bind only to loopback so Nginx (on host) can reverse proxy
+      - "127.0.0.1:3000:3000"
+
+networks:
+  default:
+    name: royal-grace
+
+volumes:
+  h2data:

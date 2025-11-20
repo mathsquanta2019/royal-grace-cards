@@ -1,0 +1,33 @@
+# General
+.DS_Store
+Thumbs.db
+.env
+.env.*
+*.log
+.idea/
+.vscode/
+.gradle/
+
+# Node / Next.js
+node_modules/
+.next/
+.turbo/
+.vercel/
+out/
+dist/
+build/
+coverage/
+
+# Docker
+*.pid
+
+# Java / Spring / Gradle / Maven
+backend/target/
+backend/.gradle/
+backend/build/
+backend/.classpath
+backend/.project
+backend/.settings/
+
+# Local overrides
+deploy/gcp/.env

@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: royal-grace-backend:local
+    container_name: royal-grace-backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Persist H2 DB under mounted /data directory
+      SPRING_DATASOURCE_URL: jdbc:h2:file:/data/royalgrace
+      SPRING_DATASOURCE_USERNAME: sa
+      SPRING_DATASOURCE_PASSWORD: ""
+      # Optionally reduce SQL logs
+      LOGGING_LEVEL_ORG_HIBERNATE_SQL: warn
+      # Seed default admin credentials on first run (backend reads these)
+      ADMIN_DEFAULT_USERNAME: admin
+      ADMIN_DEFAULT_PASSWORD: change-me
+      ADMIN_DEFAULT_EMAIL: ""
+    volumes:
+      - h2data:/data
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    image: royal-grace-frontend:local
+    container_name: royal-grace-frontend
+    depends_on:
+      - backend
+    ports:
+      - "3000:3000"
+    environment:
+      # Point frontend to backend service name on the Docker network
+      API_BASE_URL: http://backend:8080
+      # Admin auth (demo values for local only; change before deploying)
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: change-me
+      ADMIN_JWT_SECRET: super-secret-change-me
+      # Frontend issues JWT after backend verification; no default seeding needed here
+
+volumes:
+  h2data:

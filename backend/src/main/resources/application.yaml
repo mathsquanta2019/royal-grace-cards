@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: backend
+  datasource:
+    url: jdbc:h2:file:./data/royalgrace
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    # Explicit dialect helps Hibernate start even if JDBC metadata isn't available at boot
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+
+server:
+  error:
+    include-message: always
+
+springdoc:
+  api-docs:
+    enabled: false
+
+logging:
+  level:
+    org.hibernate.SQL: warn

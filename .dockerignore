@@ -1,0 +1,21 @@
+# Global docker ignore for project builds
+.git
+.gitignore
+node_modules
+.next
+dist
+build
+tmp
+.DS_Store
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage
+**/.env*
+backend/target
+backend/.mvn
+backend/mvnw*
+backend/gradle
+backend/gradlew*
+backend/.gradle

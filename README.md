@@ -4,7 +4,7 @@ This project contains:
 - Frontend: Next.js 16 (Node 20) using pnpm
 - Backend: Spring Boot (Java 21) with H2 (file-mode) for persistence
 
-This guide covers running and testing locally, plus building and deploying to Google Cloud Run.
+This guide covers running and testing locally, plus deploying to a Linux VM (e.g., GCP Compute Engine) with Docker Compose and Nginx.
 
 #### Prerequisites
 - Docker Desktop (or Docker Engine + Compose v2)
@@ -37,6 +37,93 @@ Change these immediately from the Admin UI (see Admin security below) or by sett
 Compose persists the H2 database in a named volume `h2data`, so data survives container restarts.
 
 ---
+
+### Run on a VM with production Docker Compose (behind Nginx)
+
+There are two ways to run in production on a VM:
+
+1) Recommended: use the GCP helper scripts under `deploy/gcp` (these set up Nginx and run prod Compose for you).
+2) Manual: run `docker-compose.prod.yml` yourself and configure Nginx.
+
+Why a prod file? The prod Compose binds Next.js only to `127.0.0.1:3000` (loopback) and expects Nginx on the host to reverse proxy public traffic to it. The frontend talks to the backend over the internal Docker network.
+
+#### Option A — Using the helper scripts (GCP VM)
+- Prereqs on your local machine:
+  - `gcloud` installed and authenticated
+  - Fill `deploy/gcp/.env` (see `deploy/gcp/.env.sample` for required values)
+
+Steps:
+1. Create VM and reserve static IP
+   - `deploy/gcp/create_vm.sh`
+2. Bootstrap the VM (Docker, Docker Compose plugin, Nginx, Certbot)
+   - SSH to VM then run: `sudo /bin/bash -lc "/opt/royal-grace/deploy/gcp/bootstrap_vm.sh"`
+3. Deploy the app (copies code to `/opt/royal-grace`, writes `.env`, installs Nginx site, runs prod compose)
+   - `deploy/gcp/deploy_app.sh`
+4. Point your domain A record to the VM’s static IP
+5. Issue TLS certificate and enable HTTPS redirect
+   - `deploy/gcp/issue_cert.sh`
+
+Afterwards, browse to `https://<your-domain>`.
+
+#### Option B — Manual run with docker-compose.prod.yml
+If you already have a VM with Docker and Nginx:
+
+1) On the VM, create an app directory and copy the project there:
+```
+sudo mkdir -p /opt/royal-grace
+sudo chown "$USER": /opt/royal-grace
+# Copy your project tree into /opt/royal-grace (scp/rsync/etc.)
+```
+
+2) Create `/opt/royal-grace/.env` with at least:
+```
+DOMAIN=app.example.com
+EMAIL_FOR_SSL=admin@example.com
+
+# Frontend → Backend (server-side calls inside Docker network)
+API_BASE_URL=http://backend:8080
+
+# Admin bootstrap (change these in production)
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=change-me
+ADMIN_JWT_SECRET=super-secret-change-me
+
+# Backend database (defaults to file-based H2)
+SPRING_DATASOURCE_URL=jdbc:h2:file:/data/royalgrace
+SPRING_DATASOURCE_USERNAME=sa
+SPRING_DATASOURCE_PASSWORD=
+```
+
+3) Start the app in production mode:
+```
+cd /opt/royal-grace
+set -a && source .env && set +a
+sudo docker compose -f docker-compose.prod.yml up -d --build
+```
+
+4) Configure Nginx on the host to reverse proxy to Next.js on 127.0.0.1:3000
+- Use the provided site config as a starting point:
+  - `/opt/royal-grace/deploy/gcp/nginx/royal-grace.conf`
+- Replace `EXAMPLE_DOMAIN` with your domain and install it:
+```
+sudo sed 's/EXAMPLE_DOMAIN/your.domain.tld/g' \
+  /opt/royal-grace/deploy/gcp/nginx/royal-grace.conf | \
+  sudo tee /etc/nginx/sites-available/royal-grace >/dev/null
+sudo ln -sf /etc/nginx/sites-available/royal-grace /etc/nginx/sites-enabled/royal-grace
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+5) Issue a TLS certificate (so the Secure admin cookie works in production)
+```
+sudo certbot --nginx -d your.domain.tld -m you@example.com --agree-tos --redirect -n
+sudo systemctl reload nginx
+```
+
+Notes:
+- In production, the login cookie is set with `Secure`; it will only persist over HTTPS.
+- Do not expose the backend directly via Nginx. The Next.js server (API routes) calls the backend using `API_BASE_URL` inside the Docker network.
+- The prod Compose binds Next.js to `127.0.0.1:3000` so it’s only reachable through Nginx.
 
 ### How to run local tests
 

@@ -28,7 +28,7 @@ services:
     depends_on:
       - backend
     environment:
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+      API_BASE_URL: ${API_BASE_URL:-http://backend:8080}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-change-me}
       ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET:-super-secret-change-me}
